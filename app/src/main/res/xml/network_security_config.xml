@@ -1,16 +1,13 @@
 <?xml version="1.0" encoding="utf-8"?>
 <network-security-config>
     <!-- Keep HTTPS mandatory for standard network traffic -->
-    <base-config cleartextTrafficPermitted="false">
-    </base-config>
+    <base-config cleartextTrafficPermitted="false" />
     
     <!-- Grant cleartext HTTP permission ONLY for local server loopbacks -->
     <domain-config cleartextTrafficPermitted="true">
         <domain includeSubdomains="false">127.0.0.1</domain>
         <domain includeSubdomains="false">10.111.222.1</domain>
-        <domain includeSubdomains="false">[fd66:f83a:c650::1]</domain>
         <domain includeSubdomains="false">fd66:f83a:c650::1</domain>
-        <domain includeSubdomains="false">[::1]</domain>
         <domain includeSubdomains="false">::1</domain>
         <domain includeSubdomains="false">localhost</domain>
         <domain includeSubdomains="false">ip6-localhost</domain>

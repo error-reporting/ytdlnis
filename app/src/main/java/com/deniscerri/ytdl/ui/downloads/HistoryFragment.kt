@@ -818,11 +818,7 @@ class HistoryFragment : Fragment(), HistoryPaginatedAdapter.OnItemClickListener{
                 }
 
                 item?.apply {
-                    if (quickAction == "open" && item.downloadPath.isNotEmpty()) {
-                        FileUtil.openFileIntent(requireContext(), item.downloadPath.first())
-                    } else {
-                        FileUtil.shareFileIntent(requireContext(), item.downloadPath)
-                    }
+                    UiUtil.openOrShareFiles(requireActivity(), downloadPath, quickAction == "open")
                 }
             }
 

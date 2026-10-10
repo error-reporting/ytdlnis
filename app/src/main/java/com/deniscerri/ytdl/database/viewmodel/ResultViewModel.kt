@@ -45,7 +45,9 @@ import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.Semaphore
+import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.sync.withPermit
 import kotlinx.coroutines.withContext
 import java.util.concurrent.CancellationException
@@ -205,7 +207,6 @@ class ResultViewModel(private val application: Application) : AndroidViewModel(a
         cancelParsingQueries()
         homeRecommendationsJob?.cancel()
         runningJobs.joinAll()
-        clearFailedQueries()
         getHomeRecommendations()
     }
 
@@ -480,8 +481,8 @@ class ResultViewModel(private val application: Application) : AndroidViewModel(a
     )
 
 
-    suspend fun getFormats(url: String, source: String? = null) : List<Format> {
-        return repository.getFormats(url, source)
+    suspend fun getFormats(url: String, source: String? = null, ignoreInfoJSON: Boolean = false) : List<Format> {
+        return repository.getFormats(url, source, ignoreInfoJSON)
     }
 
     suspend fun getFormatsMultiple(urls: List<String>, source: String? = null, progress: (progress: MultipleFormatProgress) -> Unit) : MutableList<MutableList<Format>> {
@@ -516,22 +517,14 @@ class ResultViewModel(private val application: Application) : AndroidViewModel(a
         return repository.getURLs()
     }
 
+    private val reorderMutex = Mutex()
     fun reverseResults(resultItems: List<Long>): List<Long> {
-        val latestResult = resultItems.max()
-        val newIdsMap = mutableListOf<Pair<Long, Long>>()
-
-        var i = 0
-        resultItems.reversed().forEach {
-            newIdsMap.add(Pair(it, latestResult + (++i)))
-        }
-
+        val reversed = resultItems.reversed()
         viewModelScope.launch(Dispatchers.IO) {
-            delay(1000)
-            newIdsMap.forEach {
-                repository.updateID(it.first, it.second)
+            reorderMutex.withLock {
+                repository.reorder(reversed)
             }
         }
-
-        return newIdsMap.map { it.second }
+        return reversed
     }
 }

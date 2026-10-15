@@ -1,7 +1,5 @@
 package com.deniscerri.ytdl
 
-import android.security.NetworkSecurityPolicy
-import android.util.Log
 import android.app.Application
 import android.content.Intent
 import android.os.Build
@@ -36,23 +34,6 @@ class App : Application() {
 
     override fun onCreate() {
         super.onCreate()
-        // --- NSC Enforcement Check ---
-        val policy = NetworkSecurityPolicy.getInstance()
-        
-        // Test loopback addresses (should log TRUE)
-        val localhostAllowed = policy.isCleartextTrafficPermitted("localhost")
-        val ip6loopbackAllowed = policy.isCleartextTrafficPermitted("::1")
-        val ip127Allowed = policy.isCleartextTrafficPermitted("127.0.0.1")
-        Log.d("NSC_TEST", "Cleartext allowed for localhost: $localhostAllowed")
-        Log.d("NSC_TEST", "Cleartext allowed for [::1]: $ip6loopbackAllowed")
-        Log.d("NSC_TEST", "Cleartext allowed for 127.0.0.1: $ip127Allowed")
-
-        // Test public domain (should log FALSE)
-        val externalAllowed = policy.isCleartextTrafficPermitted("example.com")
-        val externalAllowed2 = policy.isCleartextTrafficPermitted("youtube.com")
-        Log.d("NSC_TEST", "Cleartext allowed for example.com: $externalAllowed")
-        Log.d("NSC_TEST", "Cleartext allowed for youtube.com: $externalAllowed2")
-        // -----------------------------
         instance = this
 
         val sharedPreferences =  PreferenceManager.getDefaultSharedPreferences(this@App)

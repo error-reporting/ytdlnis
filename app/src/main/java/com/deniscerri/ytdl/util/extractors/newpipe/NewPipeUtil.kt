@@ -8,6 +8,7 @@ import com.deniscerri.ytdl.database.models.ChapterItem
 import com.deniscerri.ytdl.database.models.Format
 import com.deniscerri.ytdl.database.models.ResultItem
 import com.deniscerri.ytdl.database.viewmodel.ResultViewModel
+import com.deniscerri.ytdl.util.LocaleUtil
 import com.deniscerri.ytdl.util.Extensions.getIDFromYoutubeURL
 import com.deniscerri.ytdl.util.Extensions.toStringDuration
 import com.deniscerri.ytdl.util.extractors.newpipe.potoken.NewPipePoTokenGenerator
@@ -35,7 +36,7 @@ import kotlin.coroutines.cancellation.CancellationException
 class NewPipeUtil(context: Context) {
     private var sharedPreferences: SharedPreferences = PreferenceManager.getDefaultSharedPreferences(context)
     private val countryCode = sharedPreferences.getString("locale", "")!!.ifEmpty { "US" }
-    private val language = sharedPreferences.getString("app_language", "")!!.ifEmpty { "en" }
+    private val language = LocaleUtil.currentLocale().language
     private val useAppLanguageForMetadata = sharedPreferences.getBoolean("use_app_language_for_metadata", false)
 
     init {
@@ -141,12 +142,17 @@ class NewPipeUtil(context: Context) {
     fun getStreamingUrlAndChapters(url: String) : Result<Pair<List<String>, List<ChapterItem>?>> {
         try {
             val streamInfo = StreamInfo.getInfo(url)
-            val item = createVideoFromStream(streamInfo, url)!!
+            val item = createVideoFromStream(streamInfo, url, ignoreFormatPreference = true)!!
 
-            val videoURL = item.formats.filter { it.vcodec.isNotBlank() && it.vcodec != "none" }.firstOrNull { !it.url.isNullOrBlank() }?.url ?: ""
-            val audioURL = item.formats.filter { it.vcodec.isBlank() || it.vcodec == "none" }.firstOrNull { !it.url.isNullOrBlank() }?.url ?: ""
+            val withUrl = item.formats.filter { !it.url.isNullOrBlank() }
+            val videos = withUrl.filter { it.vcodec.isNotBlank() && it.vcodec != "none" }
+            // this is only for previews, so stay at or under 720p instead of streaming the best quality
+            val videoURL = (videos.filter { (it.height ?: 0) in 1..720 }
+                .maxByOrNull { it.height ?: 0 } ?: videos.minByOrNull { it.height ?: Int.MAX_VALUE })?.url
+            val audioURL = withUrl.firstOrNull { it.vcodec.isBlank() || it.vcodec == "none" }?.url
 
-            val urls = listOf(videoURL, audioURL)
+            val urls = listOfNotNull(videoURL, audioURL)
+            if (urls.isEmpty()) return Result.failure(Throwable("No streams found"))
             val chapters = item.chapters
             return Result.success(Pair(urls, chapters))
         }catch (e: Exception) {

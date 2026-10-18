@@ -36,6 +36,7 @@ import com.deniscerri.ytdl.database.viewmodel.DownloadCardViewModel
 import com.deniscerri.ytdl.database.viewmodel.DownloadViewModel
 import com.deniscerri.ytdl.database.viewmodel.YTDLPViewModel
 import com.deniscerri.ytdl.ui.adapter.QueuedDownloadAdapter
+import com.deniscerri.ytdl.ui.adapter.SafeGridLayoutManager
 import com.deniscerri.ytdl.util.Extensions.enableFastScroll
 import com.deniscerri.ytdl.util.Extensions.forceFastScrollMode
 import com.deniscerri.ytdl.util.Extensions.toListString
@@ -65,8 +66,6 @@ class QueuedDownloadsFragment : Fragment(), QueuedDownloadAdapter.OnItemClickLis
     private lateinit var adapter : QueuedDownloadAdapter
     private lateinit var noResults : RelativeLayout
     private lateinit var notificationUtil: NotificationUtil
-    private lateinit var fileSize: TextView
-    private lateinit var dragHandleToggle: TextView
     private lateinit var sharedPreferences: SharedPreferences
     private var totalSize: Int = 0
     private var actionMode : ActionMode? = null
@@ -89,8 +88,6 @@ class QueuedDownloadsFragment : Fragment(), QueuedDownloadAdapter.OnItemClickLis
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
         sharedPreferences = PreferenceManager.getDefaultSharedPreferences(requireContext())
-        fileSize = view.findViewById(R.id.filesize)
-        dragHandleToggle = view.findViewById(R.id.drag)
         val itemTouchHelper = ItemTouchHelper(queuedDragDropHelper)
         adapter = QueuedDownloadAdapter(this, requireActivity(), itemTouchHelper)
 
@@ -106,7 +103,7 @@ class QueuedDownloadsFragment : Fragment(), QueuedDownloadAdapter.OnItemClickLis
             val itemTouchHelper = ItemTouchHelper(simpleCallback)
             itemTouchHelper.attachToRecyclerView(queuedRecyclerView)
         }
-        queuedRecyclerView.layoutManager = GridLayoutManager(context, resources.getInteger(R.integer.grid_size))
+        queuedRecyclerView.layoutManager = SafeGridLayoutManager(requireContext(), resources.getInteger(R.integer.grid_size))
 
         lifecycleScope.launch {
             downloadViewModel.queuedDownloads.collectLatest {
@@ -114,35 +111,15 @@ class QueuedDownloadsFragment : Fragment(), QueuedDownloadAdapter.OnItemClickLis
             }
         }
 
-        adapter.addLoadStateListener { loadState ->
-            lifecycleScope.launch {
-                if (loadState.append.endOfPaginationReached )
-                {
-                    if ( adapter.itemCount < 1){
-                        fileSize.visibility = View.GONE
-                    }else{
-                        val size = withContext(Dispatchers.IO){
-                            FileUtil.convertFileSize(downloadViewModel.getQueuedCollectedFileSize())
-                        }
-                        if (size == "?")  fileSize.visibility = View.GONE
-                        else {
-                            fileSize.visibility = View.VISIBLE
-                            fileSize.text = "${getString(R.string.file_size)}: ~ $size"
-                        }
-                    }
-                }
-            }
-        }
-
-        downloadViewModel.getTotalSize(listOf(DownloadRepository.Status.Queued)).observe(viewLifecycleOwner){
+        downloadViewModel.getTotalSize(listOf(DownloadRepository.Status.Queued, DownloadRepository.Status.QueuedPaused)).observe(viewLifecycleOwner){
             totalSize = it
             noResults.isVisible = it == 0
-            dragHandleToggle.isVisible = it > 1
         }
+    }
 
-        dragHandleToggle.setOnClickListener {
-            adapter.toggleShowDragHandle()
-        }
+    /** Shows or hides the reorder handles on the cards. The toggle button lives in the queue sheet header */
+    fun toggleDragHandles() {
+        if (::adapter.isInitialized) adapter.toggleShowDragHandle()
     }
 
     private fun removeItem(id: Long){
@@ -195,7 +172,7 @@ class QueuedDownloadsFragment : Fragment(), QueuedDownloadAdapter.OnItemClickLis
                         val selectedIDs = getSelectedIDs().sortedBy { it }
                         val idsInMiddle = withContext(Dispatchers.IO){
                             downloadViewModel.getIDsBetweenTwoItems(selectedIDs.first(), selectedIDs.last(), listOf(
-                                DownloadRepository.Status.Queued).toListString())
+                                DownloadRepository.Status.Queued, DownloadRepository.Status.QueuedPaused).toListString())
                         }.toMutableList()
                         idsInMiddle.addAll(selectedIDs)
                         if (idsInMiddle.isNotEmpty()){
@@ -283,7 +260,7 @@ class QueuedDownloadsFragment : Fragment(), QueuedDownloadAdapter.OnItemClickLis
             return if (adapter.inverted || adapter.checkedItems.isEmpty()){
                 withContext(Dispatchers.IO){
                     downloadViewModel.getItemIDsNotPresentIn(adapter.checkedItems.toList(), listOf(
-                        DownloadRepository.Status.Queued))
+                        DownloadRepository.Status.Queued, DownloadRepository.Status.QueuedPaused))
                 }
             }else{
                 adapter.checkedItems.toList()
@@ -511,7 +488,7 @@ class QueuedDownloadsFragment : Fragment(), QueuedDownloadAdapter.OnItemClickLis
                     if(selectedObjects == 2){
                         val selectedIDs = contextualActionBar.getSelectedIDs().sortedBy { it }
                         val idsInMiddle = withContext(Dispatchers.IO){
-                            downloadViewModel.getIDsBetweenTwoItems(selectedIDs.first(), selectedIDs.last(), listOf(DownloadRepository.Status.Queued).toListString())
+                            downloadViewModel.getIDsBetweenTwoItems(selectedIDs.first(), selectedIDs.last(), listOf(DownloadRepository.Status.Queued, DownloadRepository.Status.QueuedPaused).toListString())
                         }
                         this.menu.findItem(R.id.select_between).isVisible = idsInMiddle.isNotEmpty()
                     }

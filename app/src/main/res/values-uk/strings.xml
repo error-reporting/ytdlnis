@@ -448,7 +448,7 @@
     <string name="layout">Макет</string>
     <string name="list">Список</string>
     <string name="grid">Сітка</string>
-    <string name="player_client_summary"><![CDATA[YouTube Клієнт програвача та PO Token]]></string>
+    <string name="player_client_summary">YouTube Клієнт програвача та PO Token</string>
     <string name="cache_directory">Тека кешу</string>
     <string name="cache_directory_warning">Зміна теки кешу може спричинити неочікувані проблеми. Якщо застосунок не може записувати дані за налаштованим шляхом, вона звернеться до внутрішнього каталогу кешу за замовчуванням</string>
     <string name="use_only_po_token">Використовувати лише PO token (ігнорувати клієнт програвача)</string>
@@ -701,4 +701,14 @@
     <string name="lyrics_plain">Звичайний текст</string>
     <string name="embed_lyrics_summary">Завантажуйте тексти пісень із lrclib.net і вбудовуйте їх у завантажені аудіофайли</string>
     <string name="save_lrc_file_summary">Зберігайте синхронізовані тексти пісень у файлі .lrc поруч із завантаженими аудіофайлами</string>
+    <plurals name="updates_available_summary">
+        <item quantity="one">%d доступне оновлення</item>
+        <item quantity="few">%d доступні оновлення</item>
+        <item quantity="many">%d доступні оновлення</item>
+        <item quantity="other">%d доступні оновлення</item>
+    </plurals>
+    <string name="update_install">Встановити</string>
+    <string name="welcome_perm_folders_header">Відновлені папки</string>
+    <string name="welcome_perm_folders_summary">Ваша резервна копія використовує ці папки, але програма втратила доступ до них. Надайте доступ до кожної з них заново або виберіть іншу папку для використання.</string>
+    <string name="crop_unsupported">Обрізка для цього елемента недоступна</string>
 </resources>

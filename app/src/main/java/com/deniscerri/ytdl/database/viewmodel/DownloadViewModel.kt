@@ -4,7 +4,6 @@ import android.app.Application
 import android.content.SharedPreferences
 import android.content.res.Configuration
 import android.content.res.Resources
-import android.os.Build
 import android.os.Parcelable
 import android.util.DisplayMetrics
 import android.util.Log
@@ -39,6 +38,7 @@ import com.deniscerri.ytdl.database.repository.DownloadRepository
 import com.deniscerri.ytdl.database.repository.HistoryRepository
 import com.deniscerri.ytdl.database.repository.ResultRepository
 import com.deniscerri.ytdl.ui.downloadcard.MultipleItemFormatTuple
+import com.deniscerri.ytdl.util.LocaleUtil
 import com.deniscerri.ytdl.util.Extensions.needsDataUpdating
 import com.deniscerri.ytdl.util.Extensions.toListString
 import com.deniscerri.ytdl.util.FileUtil
@@ -63,7 +63,6 @@ import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withContext
 import kotlinx.parcelize.Parcelize
 import java.io.File
-import java.util.Locale
 
 
 class DownloadViewModel(private val application: Application) : AndroidViewModel(application) {
@@ -88,6 +87,7 @@ class DownloadViewModel(private val application: Application) : AndroidViewModel
     val activeDownloadsCount : Flow<Int>
     val activePausedDownloadsCount : Flow<Int>
     val queuedDownloadsCount : Flow<Int>
+    val queuedPausedDownloadsCount : Flow<Int>
     val pausedDownloadsCount : Flow<Int>
     val cancelledDownloadsCount : Flow<Int>
     val erroredDownloadsCount : Flow<Int>
@@ -140,6 +140,7 @@ class DownloadViewModel(private val application: Application) : AndroidViewModel
         activeDownloadsCount = repository.activeDownloadsCount
         activePausedDownloadsCount = repository.activePausedDownloadsCount
         queuedDownloadsCount = repository.queuedDownloadsCount
+        queuedPausedDownloadsCount = repository.queuedPausedDownloadsCount
         pausedDownloadsCount = repository.pausedDownloadsCount
         cancelledDownloadsCount = repository.cancelledDownloadsCount
         erroredDownloadsCount = repository.erroredDownloadsCount
@@ -161,14 +162,15 @@ class DownloadViewModel(private val application: Application) : AndroidViewModel
             }
         }
 
-        pausedAllDownloadsFlow = combine(activeDownloadsCount, queuedDownloadsCount, pausedDownloadsCount) { active, queued, paused ->
+        pausedAllDownloadsFlow = combine(activeDownloadsCount, queuedDownloadsCount, pausedDownloadsCount, queuedPausedDownloadsCount) { active, queuedTotal, paused, queuedPaused ->
             if (isPausingResuming) {
                 return@combine PausedAllDownloadsState.PROCESSING
             }
 
-            if (active == 0 && queued == 0 && paused == 0) {
+            val queued = queuedTotal - queuedPaused
+            if (active == 0 && queued == 0 && paused == 0 && queuedPaused == 0) {
                 return@combine PausedAllDownloadsState.HIDDEN
-            }else if (paused > 1 || (active == 0 && queued > 0) || (paused > 0 && active > 0)) {
+            }else if (paused > 1 || queuedPaused > 0 || (active == 0 && queued > 0) || (paused > 0 && active > 0)) {
                 return@combine PausedAllDownloadsState.RESUME
             }else if (active > 1 || (active > 0 && queued > 0)) {
                 return@combine PausedAllDownloadsState.PAUSE
@@ -182,16 +184,7 @@ class DownloadViewModel(private val application: Application) : AndroidViewModel
         }
 
         val confTmp = Configuration(application.resources.configuration)
-        val locale = if (Build.VERSION.SDK_INT < 33) {
-            sharedPreferences.getString("app_language", "")!!.ifEmpty { Locale.getDefault().language }
-        }else{
-            Locale.getDefault().language
-        }.run {
-            split("-")
-        }.run {
-            if (this.size == 1) Locale(this[0]) else Locale(this[0], this[1])
-        }
-        confTmp.setLocale(locale)
+        confTmp.setLocale(LocaleUtil.currentLocale())
         val metrics = DisplayMetrics()
         resources = Resources(application.assets, metrics, confTmp)
     }
@@ -565,7 +558,7 @@ class DownloadViewModel(private val application: Application) : AndroidViewModel
 
 
     //pass for video download for audio format sorter, so that it wont apply certain preferences that should be only for audio downloads
-    fun getFormat(formats: List<Format>, type: DownloadType, url: String? = null, forVideoDownload: Boolean = false) : Format {
+    fun getFormat(formats: List<Format>, type: DownloadType, url: String? = null, forVideoDownload: Boolean = false, downloadItemContext: DownloadItem? = null) : Format {
         when(type) {
             DownloadType.audio -> {
                 return cloneFormat (
@@ -587,7 +580,7 @@ class DownloadViewModel(private val application: Application) : AndroidViewModel
                             formatUtil.getGenericVideoFormats(resources).sortedByDescending { it.filesize }
                         }
 
-                        FormatUtil(application).sortVideoFormats(theFormats).first()
+                        FormatUtil(application).sortVideoFormats(theFormats, downloadItemContext).first()
                     }catch (e: Exception){
                         formatUtil.getGenericVideoFormats(resources).first()
                     }
@@ -1247,6 +1240,7 @@ class DownloadViewModel(private val application: Application) : AndroidViewModel
         isPausingResuming = false
         withContext(Dispatchers.IO){
             repository.setDownloadStatusMultiple(activeDownloadsList.map { it.id }, DownloadRepository.Status.Paused)
+            repository.setDownloadStatusMultiple(dao.getQueuedDownloadIDs(), DownloadRepository.Status.QueuedPaused)
         }
         pausedAllDownloads.value = PausedAllDownloadsState.RESUME
     }

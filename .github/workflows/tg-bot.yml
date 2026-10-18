@@ -1,6 +1,7 @@
 name: Telegram Builder
 
 on:
+  workflow_dispatch:
   release:
     types: [published]
 

@@ -651,13 +651,6 @@ class DownloadViewModel(private val application: Application) : AndroidViewModel
         )
     }
 
-    suspend fun toggleProcessingSort() : String {
-        processingItems.emit(true)
-        processingSort.value = if (processingSort.value == "ASC") "DESC" else "ASC"
-        repository.reverseProcessingDownloads()
-        processingItems.emit(false)
-        return processingSort.value
-    }
 
     suspend fun sortProcessingDownloads(sortBy: String, ascending: Boolean) {
         processingItems.emit(true)
@@ -821,43 +814,12 @@ class DownloadViewModel(private val application: Application) : AndroidViewModel
         repository.cancelActiveQueued()
     }
 
-    fun getQueued() : List<DownloadItem> {
-        return repository.getQueuedDownloads()
-    }
-
-    fun getScheduled() : List<DownloadItem> {
-        return repository.getScheduledDownloads()
-    }
-
-    fun getCancelled() : List<DownloadItem> {
-        return repository.getCancelledDownloads()
-    }
-    fun getErrored() : List<DownloadItem> {
-        return repository.getErroredDownloads()
-    }
-
-    fun getSaved() : List<DownloadItem> {
-        return repository.getSavedDownloads()
-    }
-
     fun getActiveDownloads() : List<DownloadItem>{
         return repository.getActiveDownloads()
     }
 
     fun getActiveDownloadsCount() : Int {
         return repository.getActiveDownloadsCount()
-    }
-
-    fun getActiveQueuedDownloadsCount() : Int {
-        return dao.getDownloadsCountByStatus(listOf(DownloadRepository.Status.Active, DownloadRepository.Status.Queued).toListString())
-    }
-
-    fun getQueuedDownloadsCount() : Int {
-        return dao.getDownloadsCountByStatus(listOf(DownloadRepository.Status.Queued).toListString())
-    }
-
-    fun getActiveAndQueuedDownloadIDs() : List<Long>{
-        return repository.getActiveAndQueuedDownloadIDs()
     }
 
     suspend fun resetScheduleTimeForItemsAndStartDownload(items: List<Long>) = CoroutineScope(Dispatchers.IO).launch {
@@ -926,7 +888,7 @@ class DownloadViewModel(private val application: Application) : AndroidViewModel
     }
 
     fun getQueuedCollectedFileSize() : Long {
-        return dbManager.downloadDao.getSelectedFormatFromQueued().filter { it.filesize > 10 }.sumOf { it.filesize }
+        return repository.getQueuedCollectedFileSize()
     }
 
     fun getTotalSize(status: List<DownloadRepository.Status>) : LiveData<Int> {

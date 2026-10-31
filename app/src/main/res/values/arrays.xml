@@ -1552,7 +1552,7 @@
 
     <string-array name="history_quick_action_entries">
         <item>@string/share</item>
-        <item>@string/Open_File</item>
+        <item>@string/open_file</item>
     </string-array>
 
     <string-array name="history_quick_action_values">

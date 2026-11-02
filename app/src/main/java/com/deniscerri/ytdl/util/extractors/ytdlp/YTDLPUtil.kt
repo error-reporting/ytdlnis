@@ -928,11 +928,19 @@ class YTDLPUtil(private val context: Context, private val commandTemplateDao: Co
         )
     }
 
+    private fun setMetadataArg(field: String, value: String): String {
+        val from = " " + value.replace("%", "%%").replace(":", "\\:")
+        return from.replace("\\", "\\\\") + ":" + field
+    }
+
     private fun StringJoiner.addOption(vararg elements: Any) {
         this.add(elements.first().toString())
         if (elements.size > 1) {
             for (el in elements.drop(1)) {
                 val arg = el.toString()
+                    // not escaped here: it would change the text of every command (the \s, \d in the metadata
+                    // regexes), which shows in logs and breaks the history duplicate check against older
+                    // downloads. Values that can contain backslashes escape them themselves (setMetadataArg).
                     //.replace("\\", "\\\\")
                     .replace("\"", "\\\"")
 
@@ -985,9 +993,8 @@ class YTDLPUtil(private val context: Context, private val commandTemplateDao: Co
         }
 
         if (downloadItem.playlistTitle.isNotBlank() && useItemURL) {
-            metadataCommands.addOption("--parse-metadata", " :%(playlist_title)s")
-            metadataCommands.addOption("--parse-metadata", "%(playlist_title)s:%(playlist)s")
-            metadataCommands.addOption("--replace-in-metadata", "playlist,playlist_title", "^.*$", downloadItem.playlistTitle)
+            metadataCommands.addOption("--parse-metadata", setMetadataArg("playlist_title", downloadItem.playlistTitle))
+            metadataCommands.addOption("--parse-metadata", setMetadataArg("playlist", downloadItem.playlistTitle))
         }
 
         if (downloadItem.playlistIndex != null) {
@@ -1122,7 +1129,7 @@ class YTDLPUtil(private val context: Context, private val commandTemplateDao: Co
             }
 
             if(downloadItem.title.isNotBlank()){
-                metadataCommands.addOption("--replace-in-metadata", "title", """^.*$""", downloadItem.title.replace("""\""", """\\"""))
+                metadataCommands.addOption("--parse-metadata", setMetadataArg("title", downloadItem.title))
                 metadataCommands.addOption("--parse-metadata", "%(title)s:%(meta_title)s")
             }
 
@@ -1130,7 +1137,7 @@ class YTDLPUtil(private val context: Context, private val commandTemplateDao: Co
             metadataCommands.addOption("--parse-metadata", """%(${useArtistTags}uploader,channel,creator|)l:^(?P<uploader>.*?)(?:(?= - Topic)|$)""")
 
             if (downloadItem.author.isNotBlank()){
-                metadataCommands.addOption("--replace-in-metadata", "uploader", """^.*$""", downloadItem.author.replace("""\""", """\\"""))
+                metadataCommands.addOption("--parse-metadata", setMetadataArg("uploader", downloadItem.author))
                 metadataCommands.addOption("--parse-metadata", "%(uploader)s:%(artist)s")
             }
 
@@ -1304,27 +1311,19 @@ class YTDLPUtil(private val context: Context, private val commandTemplateDao: Co
 
                         val emptyAuthor = downloadItem.author.isEmpty()
                         val usePlaylistMetadata = sharedPreferences.getBoolean("playlist_as_album", true)
+                        val allArtistsInAlbumArtist = sharedPreferences.getBoolean("all_artists_in_album_artist", false)
 
-                        if (emptyAuthor) {
-                            if (usePlaylistMetadata) {
-                                metadataCommands.addOption("--parse-metadata", "%(playlist_uploader,artist,uploader|)s:^(?P<first_artist>.*?)(?:(?=,\\s+)|$)")
-                            }else{
-                                metadataCommands.addOption("--parse-metadata", "%(artist,uploader|)s:^(?P<first_artist>.*?)(?:(?=,\\s+)|$)")
-                            }
-                        }else{
-                            if (usePlaylistMetadata) {
-                                metadataCommands.addOption("--parse-metadata", "%(playlist_uploader,artist|)s:^(?P<first_artist>.*?)(?:(?=,\\s+)|$)")
-                            }else{
-                                metadataCommands.addOption("--parse-metadata", "%(artist|)s:^(?P<first_artist>.*?)(?:(?=,\\s+)|$)")
-                            }
-                        }
+                        // album artist fallback: the first of the artists, or all of them (some players group albums by the full list)
+                        val artistFields = listOfNotNull("playlist_uploader".takeIf { usePlaylistMetadata }, "artist", "uploader".takeIf { emptyAuthor }).joinToString(",")
+                        val artistPattern = if (allArtistsInAlbumArtist) "(?P<default_album_artist>.*)" else "^(?P<default_album_artist>.*?)(?:(?=,\\s+)|$)"
+                        metadataCommands.addOption("--parse-metadata", "%($artistFields|)s:$artistPattern")
 
                         if (usePlaylistMetadata) {
                             metadataCommands.addOption("--parse-metadata", "%(album,playlist_title,playlist|)s:%(meta_album)s")
                         }
 
 
-                        metadataCommands.addOption("--parse-metadata", "%(album_artist,first_artist|)s:%(album_artist)s")
+                        metadataCommands.addOption("--parse-metadata", "%(album_artist,default_album_artist|)s:%(album_artist)s")
                         metadataCommands.addOption("--parse-metadata", "%(release_year,release_date>%Y,upload_date>%Y)s:(?P<meta_date>\\d+)")
 
                         if (isPlaylistItem) {

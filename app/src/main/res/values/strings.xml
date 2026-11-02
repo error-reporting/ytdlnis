@@ -206,6 +206,7 @@
     <string name="cookies">Cookies</string>
     <string name="new_cookie">New cookie</string>
     <string name="get_cookies">Get cookies</string>
+    <string name="no_cookies_found">No cookies were found for this site. Finish signing in, then try again</string>
     <string name="delete_all_cookies">Delete all cookies</string>
     <string name="confirm_delete_cookies_desc">Delete all the cookies, permanently</string>
     <string name="download_over_metered_networks">Download over metered networks</string>
@@ -309,6 +310,8 @@
     <string name="use_cookies">Use cookies</string>
     <string name="embed_metadata">Embed metadata</string>
     <string name="embed_metadata_summary">Parse and embed metadata to the file</string>
+    <string name="all_artists_in_album_artist">Save all artists in Album Artist</string>
+    <string name="all_artists_in_album_artist_summary">Use all artists for the Album Artist tag instead of only the first one</string>
     <string name="update_formats_background">Update formats in background</string>
     <string name="auto_update_ytdlp">Auto-update yt-dlp</string>
     <string name="use_sponsorblock">Use SponsorBlock</string>
@@ -709,4 +712,6 @@
     <string name="embed_lyrics_summary">Fetch lyrics from lrclib.net and embed them in audio downloads</string>
     <string name="save_lrc_file_summary">Save synced lyrics as a .lrc file next to audio downloads</string>
     <string name="crop_unsupported">Cropping is not available for this item</string>
+    <string name="press_cancel">Press here to cancel</string>
+    <string name="fetching_data">Fetching data...</string>
 </resources>

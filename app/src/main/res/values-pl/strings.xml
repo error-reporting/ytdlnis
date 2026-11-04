@@ -476,7 +476,7 @@
     <string name="reverse">Odwróć</string>
     <string name="no_keep_subs">Usuń pliki napisów po osadzeniu</string>
     <string name="no_keep_subs_summary">W przypadku korzystania z opcji Osadzanie napisów i Tworzenie napisów nie należy zachowywać plików napisów po osadzeniu</string>
-    <string name="video_compatible">Kompatybilne video</string>
+    <string name="video_compatible">Kompatybilne wideo</string>
     <string name="video_compatible_summary">Przekodowuje video, czyniąc je kompatybilnym z innymi aplikacjami</string>
     <string name="no_free_space_warning">Nie ma wolnego miejsca dla tej konfiguracji.</string>
     <string name="smallest">Najmniejszy</string>
@@ -491,8 +491,8 @@
     <string name="update_ytdlp_while_downloading_summary">Dodaj -U do yt-dlp, aby zaktualizować go do najnowszej wersji przed pobraniem</string>
     <string name="preview_filename">Podgląd nazwy pliku</string>
     <string name="potoken_gvs">V</string>
-    <string name="preferred_format_size">Preferowany rozdzielczość formatu</string>
-    <string name="prefer_drc_audio">Preferowany dziwęk dynamiczny (DRC)</string>
+    <string name="preferred_format_size">Preferowana rozdzielczość formatu</string>
+    <string name="prefer_drc_audio">Preferuj skompresowany dźwięk dynamiczny (DRC)</string>
     <string name="potoken_player">Token PO (odtwarzacz)</string>
     <string name="potoken_subs">Token PO (napisy)</string>
     <string name="url_regex">Złącze Regex</string>
@@ -537,4 +537,6 @@
     <string name="view">Wyświetl</string>
     <string name="paused">Wstrzymano</string>
     <string name="check_complete">Sprawdzanie ukończone</string>
+    <string name="optional">Opcjonalne</string>
+    <string name="translators_summary">Osoby, które pomogły przetłumaczyć tą aplikację na Weblate</string>
 </resources>

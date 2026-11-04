@@ -502,7 +502,7 @@
     <string name="app_icon">Ícone do app</string>
     <string name="show_quick_download_share_menu">Mostrar opção para fazer download imediatamente no menu de compartilhamento</string>
     <string name="quick_download_title">Não buscar dados</string>
-    <string name="sponsorblock_hook">Gancho/Saudações</string>
+    <string name="sponsorblock_hook">Gancho/saudações</string>
     <string name="packages">Pacotes</string>
     <string name="not_installed">Não instalado</string>
     <string name="bundled">Incluído no pacote</string>
@@ -714,4 +714,9 @@
     <string name="update_checked_just_now">Verificado agora mesmo</string>
     <string name="update_not_checked_yet">Ainda não verificado</string>
     <string name="optional">Opcional</string>
+    <string name="no_cookies_found">Não foram encontrados cookies para este site. Conclua o login e tente novamente</string>
+    <string name="all_artists_in_album_artist">Salvar todos os artistas em “Artista do álbum”</string>
+    <string name="all_artists_in_album_artist_summary">Use todos os artistas na tag “Artista do Álbum”, em vez de apenas o primeiro</string>
+    <string name="press_cancel">Toque aqui para cancelar</string>
+    <string name="fetching_data">Buscando dados...</string>
 </resources>

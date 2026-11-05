@@ -24,6 +24,9 @@ jobs:
           - flavor: github
             task: assembleGithubRelease
             display_name: github
+          - flavor: github_debug
+            task: assembleGithubDebug
+            display_name: github_debug
           - flavor: foss
             task: assembleFossRelease
             display_name: FOSS

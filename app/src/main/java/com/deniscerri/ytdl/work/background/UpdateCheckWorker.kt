@@ -11,6 +11,7 @@ import androidx.work.WorkManager
 import androidx.work.WorkerParameters
 import com.deniscerri.ytdl.App
 import com.deniscerri.ytdl.BuildConfig
+import com.deniscerri.ytdl.R
 import com.deniscerri.ytdl.core.RuntimeManager
 import com.deniscerri.ytdl.util.FileUtil
 import com.deniscerri.ytdl.util.NotificationUtil
@@ -42,6 +43,9 @@ class UpdateCheckWorker(
             RuntimeManager.packages.forEach { pkg ->
                 val instance = pkg.plugin.getInstance()
                 if (instance.bundledVersion.isNullOrBlank() && instance.downloadedVersion.isNullOrBlank()) return@forEach
+                val biggestVersionPresent : Int? = listOf(instance.downloadedVersion, instance.bundledVersion)
+                    .map { it?.replace("v", "")?.toInt() }.sortedByDescending { it }.first()
+
                 instance.getReleases().apply {
                     val releases = this.getOrElse { listOf() }
                     if (releases.isEmpty()) return@apply
@@ -50,6 +54,9 @@ class UpdateCheckWorker(
                     if (latestRelease.isBundled || latestRelease.isInstalled) return@apply
                     if (skipRemindingPackageUpdate.contains(latestRelease.tag_name)) return@apply
 
+                    if (biggestVersionPresent != null && latestRelease.tag_name.split("-")[1].toInt() <= biggestVersionPresent) {
+                        return@apply
+                    }
                     notificationUtil.showNewPackageUpdate(pkg.title, latestRelease.tag_name)
 
                     skipRemindingPackageUpdate.add(latestRelease.tag_name)

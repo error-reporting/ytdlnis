@@ -38,6 +38,7 @@ import com.deniscerri.ytdl.database.repository.DownloadRepository
 import com.deniscerri.ytdl.database.viewmodel.CommandTemplateViewModel
 import com.deniscerri.ytdl.database.viewmodel.DownloadCardViewModel
 import com.deniscerri.ytdl.database.viewmodel.DownloadViewModel
+import com.deniscerri.ytdl.database.viewmodel.FormatViewModel
 import com.deniscerri.ytdl.database.viewmodel.HistoryViewModel
 import com.deniscerri.ytdl.database.viewmodel.ResultViewModel
 import com.deniscerri.ytdl.receiver.ShareActivity
@@ -50,12 +51,9 @@ import com.google.android.material.bottomsheet.BottomSheetDialogFragment
 import com.google.android.material.button.MaterialButton
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.google.android.material.elevation.SurfaceColors
-import com.google.android.material.progressindicator.LinearProgressIndicator
 import com.google.android.material.snackbar.Snackbar
 import com.google.android.material.tabs.TabLayout
-import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.update
@@ -72,6 +70,7 @@ class DownloadBottomSheetDialog : BottomSheetDialogFragment() {
     private lateinit var historyViewModel: HistoryViewModel
     private lateinit var resultViewModel: ResultViewModel
     private lateinit var downloadCardViewModel: DownloadCardViewModel
+    private lateinit var formatViewModel: FormatViewModel
     private lateinit var behavior: BottomSheetBehavior<View>
     private lateinit var commandTemplateViewModel : CommandTemplateViewModel
     private lateinit var sharedPreferences : SharedPreferences
@@ -82,6 +81,9 @@ class DownloadBottomSheetDialog : BottomSheetDialogFragment() {
     private lateinit var shimmerLoadingSubtitle : ShimmerFrameLayout
     private lateinit var subtitle : View
     private lateinit var parentActivity: BaseActivity
+
+    private lateinit var scheduleBtn: Button
+    private lateinit var downloadBtn: Button
 
 
     private lateinit var result: ResultItem
@@ -98,6 +100,7 @@ class DownloadBottomSheetDialog : BottomSheetDialogFragment() {
         resultViewModel = ViewModelProvider(requireActivity())[ResultViewModel::class.java]
         commandTemplateViewModel = ViewModelProvider(requireActivity())[CommandTemplateViewModel::class.java]
         downloadCardViewModel = ViewModelProvider(requireActivity())[DownloadCardViewModel::class.java]
+        formatViewModel = ViewModelProvider(requireActivity())[FormatViewModel::class.java]
         sharedPreferences = PreferenceManager.getDefaultSharedPreferences(requireContext())
 
         val res = downloadCardViewModel.resultItem
@@ -154,11 +157,18 @@ class DownloadBottomSheetDialog : BottomSheetDialogFragment() {
         shimmerLoadingSubtitle = view.findViewById(R.id.shimmer_loading_subtitle)
         subtitle = view.findViewById(R.id.bottom_sheet_subtitle)
 
-        shimmerLoading.setOnClickListener {
+        fun cancelLoadingData() {
             lifecycleScope.launch {
                 resultViewModel.cancelUpdateItemData()
                 (updateItem.parent as LinearLayout).visibility = View.VISIBLE
             }
+        }
+
+        shimmerLoading.setOnClickListener {
+            cancelLoadingData()
+        }
+        shimmerLoadingSubtitle.setOnClickListener {
+            cancelLoadingData()
         }
 
 
@@ -301,24 +311,24 @@ class DownloadBottomSheetDialog : BottomSheetDialogFragment() {
 
         val shownFields = sharedPreferences.getStringSet("modify_download_card", requireContext().resources.getStringArray(R.array.modify_download_card_values).toSet())!!.toList()
 
-        val scheduleBtn = view.findViewById<MaterialButton>(R.id.bottomsheet_schedule_button)
+        scheduleBtn = view.findViewById<MaterialButton>(R.id.bottomsheet_schedule_button)
         scheduleBtn.visibility = if(shownFields.contains("schedule")){
             View.VISIBLE
         }else{
             View.GONE
         }
-        val download = view.findViewById<Button>(R.id.bottomsheet_download_button)
+        downloadBtn = view.findViewById<Button>(R.id.bottomsheet_download_button)
 
 
         scheduleBtn.setOnClickListener{
             UiUtil.showDatePicker(fragmentManager, sharedPreferences) {
                 lifecycleScope.launch {
                     resultViewModel.cancelUpdateItemData()
-                    resultViewModel.cancelUpdateFormatsItemData()
+                    formatViewModel.cancelUpdateFormats()
                 }
 
                 scheduleBtn.isEnabled = false
-                download.isEnabled = false
+                downloadBtn.isEnabled = false
                 val item: DownloadItem = getDownloadItem()
                 item.status = DownloadRepository.Status.Scheduled.toString()
                 item.downloadStartTime = it.timeInMillis
@@ -363,12 +373,12 @@ class DownloadBottomSheetDialog : BottomSheetDialogFragment() {
 
             }
         }
-        download!!.setOnClickListener {
+        downloadBtn.setOnClickListener {
             lifecycleScope.launch {
                 resultViewModel.cancelUpdateItemData()
-                resultViewModel.cancelUpdateFormatsItemData()
+                formatViewModel.cancelUpdateFormats()
                 scheduleBtn.isEnabled = false
-                download.isEnabled = false
+                downloadBtn.isEnabled = false
                 val item: DownloadItem = getDownloadItem()
                 if (item.videoPreferences.alsoDownloadAsAudio){
                     val itemsToQueue = mutableListOf<DownloadItem>()
@@ -395,7 +405,7 @@ class DownloadBottomSheetDialog : BottomSheetDialogFragment() {
             }
         }
 
-        download.setOnLongClickListener {
+        downloadBtn.setOnLongClickListener {
             val dd = MaterialAlertDialogBuilder(requireContext())
             dd.setTitle(getString(R.string.save_for_later))
             dd.setNegativeButton(getString(R.string.cancel)) { dialogInterface: DialogInterface, _: Int -> dialogInterface.cancel() }
@@ -505,6 +515,8 @@ class DownloadBottomSheetDialog : BottomSheetDialogFragment() {
                         shimmerLoading.startShimmer()
                         shimmerLoadingSubtitle.startShimmer()
                         (updateItem.parent as LinearLayout).visibility = View.GONE
+                        downloadBtn.isEnabled = false
+                        scheduleBtn.isEnabled = false
                     }else{
                         title.visibility = View.VISIBLE
                         subtitle.visibility = View.VISIBLE
@@ -512,59 +524,8 @@ class DownloadBottomSheetDialog : BottomSheetDialogFragment() {
                         shimmerLoadingSubtitle.visibility = View.GONE
                         shimmerLoading.stopShimmer()
                         shimmerLoadingSubtitle.stopShimmer()
-                    }
-                }
-            }
-        }
-
-        lifecycleScope.launch {
-            resultViewModel.updatingFormats.collectLatest {
-                kotlin.runCatching {
-                    if (it){
-                        delay(500)
-                        runCatching {
-                            (fragmentAdapter.fragments[0] as DownloadAudioFragment).apply {
-                                view?.findViewById<LinearProgressIndicator>(R.id.format_loading_progress)?.apply {
-                                    isVisible = true
-                                    isClickable = true
-                                    setOnClickListener {
-                                        lifecycleScope.launch {
-                                            resultViewModel.cancelUpdateFormatsItemData()
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                        runCatching {
-                            (fragmentAdapter.fragments[1] as DownloadVideoFragment).apply {
-                                view?.findViewById<LinearProgressIndicator>(R.id.format_loading_progress)?.apply {
-                                    isVisible = true
-                                    isClickable = true
-                                    setOnClickListener {
-                                        lifecycleScope.launch {
-                                            resultViewModel.cancelUpdateFormatsItemData()
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                    }else{
-                        runCatching {
-                            (fragmentAdapter.fragments[0] as DownloadAudioFragment).apply {
-                                view?.findViewById<LinearProgressIndicator>(R.id.format_loading_progress)?.apply {
-                                    isVisible = false
-                                    isClickable = false
-                                }
-                            }
-                        }
-                        runCatching {
-                            (fragmentAdapter.fragments[1] as DownloadVideoFragment).apply {
-                                view?.findViewById<LinearProgressIndicator>(R.id.format_loading_progress)?.apply {
-                                    isVisible = false
-                                    isClickable = false
-                                }
-                            }
-                        }
+                        downloadBtn.isEnabled = true
+                        scheduleBtn.isEnabled = true
                     }
                 }
             }
@@ -628,40 +589,30 @@ class DownloadBottomSheetDialog : BottomSheetDialogFragment() {
         }
 
         lifecycleScope.launch {
-            resultViewModel.updateFormatsResultData.collectLatest { formats ->
-                if (formats == null) return@collectLatest
+            formatViewModel.formatUpdates.collect { event ->
                 kotlin.runCatching {
-                    isAudioOnly = formats.isNotEmpty() && formats.none { !it.format_note.contains("audio") }
-                    if (isAudioOnly){
-                        (tabLayout.getChildAt(0) as? ViewGroup)?.getChildAt(1)?.isClickable = true
-                        (tabLayout.getChildAt(0) as? ViewGroup)?.getChildAt(1)?.alpha = 0.3f
-                        Toast.makeText(context, getString(R.string.audio_only_item), Toast.LENGTH_SHORT).show()
-                        tabLayout.getTabAt(0)!!.select()
-                        viewPager2.setCurrentItem(0, false)
-                    }
-
-                    lifecycleScope.launch {
-                        withContext(Dispatchers.Main){
-                            runCatching {
-                                val f1 = fragmentAdapter.fragments[0] as DownloadAudioFragment
-                                val resultItem = downloadViewModel.createResultItemFromDownload(f1.downloadItem)
-                                resultItem.formats = formats
-                                fragmentAdapter.setResultItem(resultItem)
-                                f1.view?.findViewById<LinearProgressIndicator>(R.id.format_loading_progress)?.visibility = View.GONE
+                    when (event) {
+                        is FormatViewModel.FormatUpdateEvent.Updated -> {
+                            if (event.url != result.url) return@runCatching
+                            val formats = event.formats
+                            isAudioOnly = formats.isNotEmpty() && formats.none { !it.format_note.contains("audio") }
+                            if (isAudioOnly){
+                                (tabLayout.getChildAt(0) as? ViewGroup)?.getChildAt(1)?.isClickable = true
+                                (tabLayout.getChildAt(0) as? ViewGroup)?.getChildAt(1)?.alpha = 0.3f
+                                Toast.makeText(context, getString(R.string.audio_only_item), Toast.LENGTH_SHORT).show()
+                                tabLayout.getTabAt(0)!!.select()
+                                viewPager2.setCurrentItem(0, false)
                             }
-                            runCatching {
-                                val f1 = fragmentAdapter.fragments[1] as DownloadVideoFragment
-                                val resultItem = downloadViewModel.createResultItemFromDownload(f1.downloadItem)
-                                resultItem.formats = formats
-                                fragmentAdapter.setResultItem(resultItem)
-                                f1.view?.findViewById<LinearProgressIndicator>(R.id.format_loading_progress)?.visibility = View.GONE
+                            if (formats.isNotEmpty()){
+                                result.formats = formats
                             }
                         }
-
-                        if (formats.isNotEmpty()){
-                            result.formats = formats
+                        is FormatViewModel.FormatUpdateEvent.Error -> {
+                            // an open format sheet reports it itself
+                            if (parentFragmentManager.findFragmentByTag("formatSheet") != null) return@runCatching
+                            resultViewModel.uiState.update { it.copy(processing = false, errorMessage = event.message) }
                         }
-                        resultViewModel.updateFormatsResultData.emit(null)
+                        else -> {}
                     }
                 }
             }
@@ -728,18 +679,13 @@ class DownloadBottomSheetDialog : BottomSheetDialogFragment() {
     }
 
     private fun initUpdateFormats(res: ResultItem){
-        kotlin.runCatching {
-            if (resultViewModel.updatingFormats.value) return
-            CoroutineScope(SupervisorJob()).launch(Dispatchers.IO) {
-                resultViewModel.updateFormatItemData(res)
-            }
-        }
+        formatViewModel.updateFormats(listOf(res.url))
     }
 
     override fun onDismiss(dialog: DialogInterface) {
         lifecycleScope.launch {
             resultViewModel.cancelUpdateItemData()
-            resultViewModel.cancelUpdateFormatsItemData()
+            formatViewModel.cancelUpdateFormats()
             super.onDismiss(dialog)
         }
     }

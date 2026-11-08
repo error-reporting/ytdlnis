@@ -84,7 +84,7 @@
     <string name="incognito_summary">Herunterladen ohne es zum Verlauf hinzuzufügen</string>
     <string name="video_format">Videoformat</string>
     <string name="update_app_summary">Neue Versionen der App beim Start ankündigen. Die Daten werden vom offiziellen GitHub Repository extrahiert</string>
-    <string name="Open_File">Datei öffnen</string>
+    <string name="open_file">Datei öffnen</string>
     <string name="best_quality">Höchste Qualität</string>
     <string name="warning">Warnung</string>
     <string name="sponsorblock_nonmusic">Nicht-musikalische und themenfremde Abschnitte</string>
@@ -522,4 +522,12 @@
     <string name="required">Erforderlich</string>
     <string name="crop_validation_exceeds_w">X+W überschreitet %d</string>
     <string name="crop_validation_exceeds_h">Y+H überschreitet %d</string>
+    <string name="optional">Optional</string>
+    <string name="search_results">Suchergebnisse</string>
+    <plurals name="queue_items">
+        <item quantity="one">%d Element</item>
+        <item quantity="other">%d Elemente</item>
+    </plurals>
+    <string name="translators">Übersetzer</string>
+    <string name="translators_summary">Personen, die bei der Übersetzung dieser App auf Weblate mitgeholfen haben</string>
 </resources>

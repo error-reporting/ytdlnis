@@ -348,14 +348,6 @@ class DownloadMultipleBottomSheetDialog : BottomSheetDialogFragment(), Configure
                 }
             }
 
-            override fun onFormatUpdated(url: String, formats: List<Format>) {
-                downloadViewModel.updateProcessingFormatByUrl(url, formats)
-            }
-
-            override fun onItemUnavailable(url: String) {
-                downloadViewModel.removeUnavailableDownloadAndResultByURL(url)
-            }
-
             override fun onContinueOnBackground() {
                 val hostActivity = activity ?: return
                 hostActivity.lifecycleScope.launch {
@@ -366,6 +358,17 @@ class DownloadMultipleBottomSheetDialog : BottomSheetDialogFragment(), Configure
                     downloadViewModel.processingItemsJob = null
 
                     if (isAdded) dismiss()
+                }
+            }
+        }
+
+        // updates started from the format sheet, saved to the processing items here
+        lifecycleScope.launch {
+            formatViewModel.formatUpdates.collect { event ->
+                when (event) {
+                    is FormatViewModel.FormatUpdateEvent.Updated -> downloadViewModel.updateProcessingFormatByUrl(event.url, event.formats)
+                    is FormatViewModel.FormatUpdateEvent.Unavailable -> downloadViewModel.removeUnavailableDownloadAndResultByURL(event.url)
+                    else -> {}
                 }
             }
         }
@@ -646,6 +649,17 @@ class DownloadMultipleBottomSheetDialog : BottomSheetDialogFragment(), Configure
                                             val bottomSheetDialog = AddExtraCommandsDialog(null, callback)
                                             bottomSheetDialog.show(parentFragmentManager, "extraCommands")
                                         },
+                                        metadataClicked = { changed ->
+                                            if (parentFragmentManager.findFragmentByTag("metadataSheet") == null) {
+                                                MetadataBottomSheetDialog(
+                                                    items,
+                                                    onChanged = {
+                                                        CoroutineScope(Dispatchers.IO).launch { items.forEach { downloadViewModel.updateDownload(it) } }
+                                                        changed()
+                                                    }
+                                                ).show(parentFragmentManager, "metadataSheet")
+                                            }
+                                        },
                                         lyricsChanged = {
                                             CoroutineScope(Dispatchers.IO).launch { items.forEach { downloadViewModel.updateDownload(it) } }
                                         }
@@ -771,6 +785,17 @@ class DownloadMultipleBottomSheetDialog : BottomSheetDialogFragment(), Configure
 
                                             val bottomSheetDialog = AddExtraCommandsDialog(null, callback)
                                             bottomSheetDialog.show(parentFragmentManager, "extraCommands")
+                                        },
+                                        metadataClicked = { changed ->
+                                            if (parentFragmentManager.findFragmentByTag("metadataSheet") == null) {
+                                                MetadataBottomSheetDialog(
+                                                    items,
+                                                    onChanged = {
+                                                        CoroutineScope(Dispatchers.IO).launch { items.forEach { downloadViewModel.updateDownload(it) } }
+                                                        changed()
+                                                    }
+                                                ).show(parentFragmentManager, "metadataSheet")
+                                            }
                                         },
                                         waitForVideo = {b, i -> },
                                         liveFromStart = {}
@@ -1291,6 +1316,8 @@ class DownloadMultipleBottomSheetDialog : BottomSheetDialogFragment(), Configure
         runCatching {
             (parentFragmentManager.findFragmentByTag("formatSheet") as? DialogFragment)?.dismissAllowingStateLoss()
         }
+        // closing the format sheet keeps its update going for this card, so stop it here
+        formatViewModel.cancelUpdateFormats()
         lifecycleScope.launch {
             withContext(Dispatchers.IO){
                 downloadViewModel.processingItemsJob?.cancel(CancellationException())

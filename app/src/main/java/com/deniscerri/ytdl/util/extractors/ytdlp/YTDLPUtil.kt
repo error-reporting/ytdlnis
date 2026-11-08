@@ -16,6 +16,7 @@ import com.deniscerri.ytdl.core.RuntimeManager
 import com.deniscerri.ytdl.core.models.YTDLRequest
 import com.deniscerri.ytdl.database.dao.CommandTemplateDao
 import com.deniscerri.ytdl.database.enums.DownloadType
+import com.deniscerri.ytdl.database.enums.MetadataTag
 import com.deniscerri.ytdl.database.models.ChapterItem
 import com.deniscerri.ytdl.database.models.DownloadItem
 import com.deniscerri.ytdl.database.models.Format
@@ -36,6 +37,7 @@ import com.deniscerri.ytdl.util.Extensions.toStringDuration
 import com.deniscerri.ytdl.util.FileUtil
 import com.deniscerri.ytdl.util.FormatUtil
 import com.google.gson.Gson
+import com.google.gson.JsonParser
 import com.google.gson.Strictness
 import com.google.gson.reflect.TypeToken
 import com.google.gson.stream.JsonReader
@@ -534,13 +536,7 @@ class YTDLPUtil(private val context: Context, private val commandTemplateDao: Co
             !request.toString().contains("--download-sections")
 
         if (canUseWriteInfoJson) {
-            val infoJsonFile = getInfoJsonFile(url)
-            //ignore info file if its older than 5 hours. puny measure to prevent expired formats in some cases
-            if (infoJsonFile != null && System.currentTimeMillis() - infoJsonFile.lastModified() <= (1000 * 60 * 60 * 5)) {
-                request.addOption("--load-info-json", infoJsonFile.absolutePath)
-            }else {
-                request.addWriteInfoJson(url)
-            }
+            request.loadOrWriteInfoJson(url)
         }
 
         val formats = try {
@@ -564,6 +560,56 @@ class YTDLPUtil(private val context: Context, private val commandTemplateDao: Co
         }
 
         return formats
+    }
+
+    private fun YTDLRequest.loadOrWriteInfoJson(url: String) {
+        val infoJsonFile = getInfoJsonFile(url)
+        //ignore info file if its older than 5 hours. puny measure to prevent expired formats in some cases
+        if (infoJsonFile != null && System.currentTimeMillis() - infoJsonFile.lastModified() <= (1000 * 60 * 60 * 5)) {
+            addOption("--load-info-json", infoJsonFile.absolutePath)
+        }else {
+            addWriteInfoJson(url)
+        }
+    }
+
+    /** Autofill values for the metadata sheet by tag key, empty if nothing could be fetched */
+    suspend fun getMetadata(item: DownloadItem): Map<String, String> {
+        val url = item.url
+        val request = YTDLRequest(url)
+        request.addOption("--print", MetadataTag.printTemplate())
+        request.applyDefaultOptionsForFetchingData(url)
+        if (url.isYoutubeURL()) {
+            request.setYoutubeExtractorArgs(url)
+        }
+        if (!request.hasOption("--no-check-certificates")) request.addOption("--no-check-certificates")
+        if (!sharedPreferences.getBoolean("disable_write_info_json", false)) {
+            request.loadOrWriteInfoJson(url)
+        }
+
+        val json = try {
+            val out = RuntimeManager.getInstance().runKillable { processId ->
+                RuntimeManager.getInstance().execute(request, processId)
+            }.out
+            out.lines().lastOrNull { it.startsWith("{") }?.let { JsonParser.parseString(it).asJsonObject }
+        } catch (e: Exception) {
+            if (e is CancellationException) throw e
+            null
+        }
+
+        if (json == null) {
+            // same as getFormats, a broken info json would keep failing until it expires
+            runCatching { getInfoJsonFile(url)?.delete() }
+            return emptyMap()
+        }
+
+        // a single video url doesn't know the playlist it was picked from
+        if (item.playlistTitle.isNotBlank() && !json.has("playlist_title")) json.addProperty("playlist_title", item.playlistTitle)
+        if (item.playlistIndex != null && !json.has("playlist_index")) json.addProperty("playlist_index", item.playlistIndex)
+        if (!sharedPreferences.getBoolean("playlist_as_album", true)) {
+            listOf("playlist_title", "playlist", "playlist_uploader").forEach { json.remove(it) }
+        }
+
+        return MetadataTag.pickValues(json, item.type)
     }
 
     fun readFormatsList(reader: JsonReader): ArrayList<Format> {
@@ -933,6 +979,9 @@ class YTDLPUtil(private val context: Context, private val commandTemplateDao: Co
         if (elements.size > 1) {
             for (el in elements.drop(1)) {
                 val arg = el.toString()
+                    // not escaped here: it would change the text of every command (the \s, \d in the metadata
+                    // regexes), which shows in logs and breaks the history duplicate check against older
+                    // downloads. Values that can contain backslashes escape them themselves (MetadataTag.setFieldArg).
                     //.replace("\\", "\\\\")
                     .replace("\"", "\\\"")
 
@@ -985,9 +1034,8 @@ class YTDLPUtil(private val context: Context, private val commandTemplateDao: Co
         }
 
         if (downloadItem.playlistTitle.isNotBlank() && useItemURL) {
-            metadataCommands.addOption("--parse-metadata", " :%(playlist_title)s")
-            metadataCommands.addOption("--parse-metadata", "%(playlist_title)s:%(playlist)s")
-            metadataCommands.addOption("--replace-in-metadata", "playlist,playlist_title", "^.*$", downloadItem.playlistTitle)
+            metadataCommands.addOption("--parse-metadata", MetadataTag.setFieldArg("playlist_title", downloadItem.playlistTitle))
+            metadataCommands.addOption("--parse-metadata", MetadataTag.setFieldArg("playlist", downloadItem.playlistTitle))
         }
 
         if (downloadItem.playlistIndex != null) {
@@ -1122,7 +1170,7 @@ class YTDLPUtil(private val context: Context, private val commandTemplateDao: Co
             }
 
             if(downloadItem.title.isNotBlank()){
-                metadataCommands.addOption("--replace-in-metadata", "title", """^.*$""", downloadItem.title.replace("""\""", """\\"""))
+                metadataCommands.addOption("--parse-metadata", MetadataTag.setFieldArg("title", downloadItem.title))
                 metadataCommands.addOption("--parse-metadata", "%(title)s:%(meta_title)s")
             }
 
@@ -1130,7 +1178,7 @@ class YTDLPUtil(private val context: Context, private val commandTemplateDao: Co
             metadataCommands.addOption("--parse-metadata", """%(${useArtistTags}uploader,channel,creator|)l:^(?P<uploader>.*?)(?:(?= - Topic)|$)""")
 
             if (downloadItem.author.isNotBlank()){
-                metadataCommands.addOption("--replace-in-metadata", "uploader", """^.*$""", downloadItem.author.replace("""\""", """\\"""))
+                metadataCommands.addOption("--parse-metadata", MetadataTag.setFieldArg("uploader", downloadItem.author))
                 metadataCommands.addOption("--parse-metadata", "%(uploader)s:%(artist)s")
             }
 
@@ -1304,27 +1352,19 @@ class YTDLPUtil(private val context: Context, private val commandTemplateDao: Co
 
                         val emptyAuthor = downloadItem.author.isEmpty()
                         val usePlaylistMetadata = sharedPreferences.getBoolean("playlist_as_album", true)
+                        val allArtistsInAlbumArtist = sharedPreferences.getBoolean("all_artists_in_album_artist", false)
 
-                        if (emptyAuthor) {
-                            if (usePlaylistMetadata) {
-                                metadataCommands.addOption("--parse-metadata", "%(playlist_uploader,artist,uploader|)s:^(?P<first_artist>.*?)(?:(?=,\\s+)|$)")
-                            }else{
-                                metadataCommands.addOption("--parse-metadata", "%(artist,uploader|)s:^(?P<first_artist>.*?)(?:(?=,\\s+)|$)")
-                            }
-                        }else{
-                            if (usePlaylistMetadata) {
-                                metadataCommands.addOption("--parse-metadata", "%(playlist_uploader,artist|)s:^(?P<first_artist>.*?)(?:(?=,\\s+)|$)")
-                            }else{
-                                metadataCommands.addOption("--parse-metadata", "%(artist|)s:^(?P<first_artist>.*?)(?:(?=,\\s+)|$)")
-                            }
-                        }
+                        // album artist fallback: the first of the artists, or all of them (some players group albums by the full list)
+                        val artistFields = listOfNotNull("playlist_uploader".takeIf { usePlaylistMetadata }, "artist", "uploader".takeIf { emptyAuthor }).joinToString(",")
+                        val artistPattern = if (allArtistsInAlbumArtist) "(?P<default_album_artist>.*)" else "^(?P<default_album_artist>.*?)(?:(?=,\\s+)|$)"
+                        metadataCommands.addOption("--parse-metadata", "%($artistFields|)s:$artistPattern")
 
                         if (usePlaylistMetadata) {
                             metadataCommands.addOption("--parse-metadata", "%(album,playlist_title,playlist|)s:%(meta_album)s")
                         }
 
 
-                        metadataCommands.addOption("--parse-metadata", "%(album_artist,first_artist|)s:%(album_artist)s")
+                        metadataCommands.addOption("--parse-metadata", "%(album_artist,default_album_artist|)s:%(album_artist)s")
                         metadataCommands.addOption("--parse-metadata", "%(release_year,release_date>%Y,upload_date>%Y)s:(?P<meta_date>\\d+)")
 
                         if (isPlaylistItem) {
@@ -1731,6 +1771,18 @@ class YTDLPUtil(private val context: Context, private val commandTemplateDao: Co
             else -> {}
         }
 
+        // last, so they win over the meta_album and meta_date rules above
+        if (embedMetadata) {
+            MetadataTag.tagsOf(downloadItem)?.let { tags ->
+                MetadataTag.parseMetadataArgs(tags, downloadItem.type).forEach {
+                    metadataCommands.addOption("--parse-metadata", it)
+                }
+                if (MetadataTag.needsContainerTags(tags)) {
+                    request.addOption("--use-postprocessor", "ContainerTags:when=after_move")
+                }
+            }
+        }
+
         request.merge(metadataCommands)
 
         if (downloadItem.extraCommands.isNotBlank() && downloadItem.type != DownloadType.command){
@@ -1747,9 +1799,7 @@ class YTDLPUtil(private val context: Context, private val commandTemplateDao: Co
         val conf = File(cache.absolutePath + "/${System.currentTimeMillis()}${UUID.randomUUID()}.txt")
         conf.createNewFile()
         conf.writeText(request.toString())
-        val tmp = mutableListOf<String>()
-        tmp.addOption("--config-locations", conf.absolutePath)
-        ytDlRequest.addCommands(tmp)
+        ytDlRequest.addOption("--config-locations", conf.absolutePath)
 
         val ytdlpCache = File(FileUtil.getCacheYTDLPPath(context))
         ytDlRequest.addOption("--cache-dir", ytdlpCache.absolutePath)

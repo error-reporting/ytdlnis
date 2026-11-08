@@ -67,10 +67,6 @@ object GeneralSettingsModule : SettingModule {
                     summary = LocaleUtil.displayName(LocaleUtil.currentLocale(), supported)
 
                     setOnPreferenceClickListener {
-                        if (LocaleUtil.systemPickerAvailable()) {
-                            runCatching { context.startActivity(LocaleUtil.systemPickerIntent(context)) }
-                            return@setOnPreferenceClickListener true
-                        }
 
                         val locales = supported
                             .map { it to LocaleUtil.displayName(it, supported) }
@@ -274,26 +270,6 @@ object GeneralSettingsModule : SettingModule {
                         val packageManager = context.packageManager
                         val aliasComponentName =
                             ComponentName(context, "com.deniscerri.ytdl.terminalShareAlias")
-                        if ((pref as SwitchPreferenceCompat).isChecked){
-                            packageManager.setComponentEnabledSetting(aliasComponentName,
-                                PackageManager.COMPONENT_ENABLED_STATE_DISABLED,
-                                PackageManager.DONT_KILL_APP)
-                        }else{
-                            packageManager.setComponentEnabledSetting(aliasComponentName,
-                                PackageManager.COMPONENT_ENABLED_STATE_ENABLED,
-                                PackageManager.DONT_KILL_APP)
-                        }
-                        host.refreshUI()
-                        true
-                    }
-                }
-            }
-            "show_quick_download_share" -> {
-                (pref as SwitchPreferenceCompat).apply {
-                    setOnPreferenceChangeListener { pref, _ ->
-                        val packageManager = context.packageManager
-                        val aliasComponentName =
-                            ComponentName(context, "com.deniscerri.ytdl.quickDownloadShareAlias")
                         if ((pref as SwitchPreferenceCompat).isChecked){
                             packageManager.setComponentEnabledSetting(aliasComponentName,
                                 PackageManager.COMPONENT_ENABLED_STATE_DISABLED,

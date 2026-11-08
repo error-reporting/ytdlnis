@@ -24,6 +24,7 @@ import androidx.recyclerview.widget.RecyclerView
 import com.deniscerri.ytdl.R
 import com.deniscerri.ytdl.database.enums.DownloadType
 import com.deniscerri.ytdl.database.models.HistoryItem
+import com.deniscerri.ytdl.util.DragSelectTouchListener
 import com.deniscerri.ytdl.util.Extensions.loadThumbnail
 import com.deniscerri.ytdl.util.Extensions.popup
 import com.deniscerri.ytdl.util.FileUtil
@@ -39,7 +40,7 @@ import java.util.Locale
 
 class HistoryPaginatedAdapter(onItemClickListener: OnItemClickListener, activity: Activity) : PagingDataAdapter<HistoryItem, HistoryPaginatedAdapter.ViewHolder>(
     DIFF_CALLBACK
-) {
+), DragSelectTouchListener.Selectable {
     val checkedItems: MutableSet<Long>
     var inverted: Boolean
     private val onItemClickListener: OnItemClickListener
@@ -230,25 +231,20 @@ class HistoryPaginatedAdapter(onItemClickListener: OnItemClickListener, activity
             val btn = card.findViewById<MaterialButton>(R.id.action_button)
             var filesPresent = true
 
-            fun applyPresence(present: Boolean) {
-                filesPresent = present
-                if (present) {
-                    thumbnail.alpha = 1f
-                    thumbnail.colorFilter = null
-                    btn.backgroundTintList = MaterialColors.getColorStateList(activity, R.attr.colorPrimaryContainer, ContextCompat.getColorStateList(activity, android.R.color.transparent)!!)
-                } else {
-                    thumbnail.colorFilter = ColorMatrixColorFilter(ColorMatrix().apply { setSaturation(0f) })
-                    thumbnail.alpha = 0.7f
-                    btn.backgroundTintList = MaterialColors.getColorStateList(activity, R.attr.colorSurface, ContextCompat.getColorStateList(activity, android.R.color.transparent)!!)
-                }
-            }
-
             //IS IN THE FILE SYSTEM?
-            val paths = item.downloadPath
-            applyPresence(true) // optimistic until checked
-            (activity as? LifecycleOwner)?.lifecycleScope?.launch {
-                val missing = paths.all { it.isNotBlank() && !FileUtil.checkExists(it) }
-                if (card.tag == item.id) applyPresence(!missing) // guard against recycled views
+            if (item.downloadPath.all { !File(it).exists() && it.isNotBlank()}) {
+                filesPresent = false
+                thumbnail.colorFilter = ColorMatrixColorFilter(object : ColorMatrix() {
+                    init {
+                        setSaturation(0f)
+                    }
+                })
+                thumbnail.alpha = 0.7f
+                btn.backgroundTintList = MaterialColors.getColorStateList(activity, R.attr.colorSurface, ContextCompat.getColorStateList(activity, android.R.color.transparent)!!)
+            }else{
+                thumbnail.alpha = 1f
+                thumbnail.colorFilter = null
+                btn.backgroundTintList = MaterialColors.getColorStateList(activity, R.attr.colorSurface, ContextCompat.getColorStateList(activity, android.R.color.transparent)!!)
             }
 
             if (item.type == DownloadType.audio) {
@@ -337,6 +333,20 @@ class HistoryPaginatedAdapter(onItemClickListener: OnItemClickListener, activity
         }
         card.isChecked = !card.isChecked
         onItemClickListener.onCardSelect(card.isChecked, position)
+    }
+
+    override fun isItemSelected(position: Int): Boolean {
+        val item = (if (position in 0 until itemCount) peek(position) else null) ?: return false
+        return checkedItems.contains(item.id) != inverted
+    }
+
+    override fun setItemSelected(position: Int, selected: Boolean) {
+        val item = (if (position in 0 until itemCount) peek(position) else null) ?: return
+        if (isItemSelected(position) == selected) return
+        if (selected != inverted) checkedItems.add(item.id) else checkedItems.remove(item.id)
+        // the payload skips the change animation so cards don't flash while dragging
+        notifyItemChanged(position, "selection")
+        onItemClickListener.onCardSelect(selected, position)
     }
 
     interface OnItemClickListener {

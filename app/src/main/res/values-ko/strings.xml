@@ -73,7 +73,6 @@
     <string name="download">다운로드</string>
     <string name="show_download_card">다운로드 설정창 표시</string>
     <string name="download_card_summary">다운로드하기 전 설정을 변경합니다. 끄면 즉시 다운로드합니다</string>
-    <string name="Open_File">파일 열기</string>
     <string name="exit_app">앱 종료</string>
     <string name="sponsorblock_nonmusic">비음악 및 주제에서 벗어난 부분</string>
     <string name="select_sponsorblock_filtering">SponsorBlock 필터링 선택</string>
@@ -696,4 +695,10 @@
     <string name="update_not_checked_yet">확인하지 않음</string>
     <string name="welcome_perm_folders_header">복원된 폴더</string>
     <string name="welcome_perm_folders_summary">백업에서 이 폴더를 사용하지만, 앱이 폴더에 접근할 권한을 잃었습니다. 각각 다시 허용하거나, 대신 사용할 다른 폴더를 고르세요.</string>
+    <string name="optional">선택</string>
+    <string name="press_cancel">여기를 눌러 취소</string>
+    <string name="fetching_data">데이터 가져오는 중...</string>
+    <string name="no_cookies_found">이 사이트에서 쿠키를 찾을 수 없습니다. 로그인을 마치고 다시 시도하세요</string>
+    <string name="all_artists_in_album_artist">앨범 아티스트에 모든 아티스트 저장</string>
+    <string name="all_artists_in_album_artist_summary">앨범 아티스트 태그에 첫 아티스트만 쓰는 대신 모두 쓰기</string>
 </resources>

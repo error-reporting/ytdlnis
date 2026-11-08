@@ -18,7 +18,6 @@
     <string name="embed_subtitles">Incorpora sottotitoli</string>
     <string name="show_download_card">Mostra scheda download</string>
     <string name="download_card_summary">Modifica le impostazioni per quell\'elemento prima del download. Disabilitando questa opzione il download verrà avviato immediatamente</string>
-    <string name="Open_File">Apri file</string>
     <string name="delete_files_too">Elimina i file dal dispositivo</string>
     <string name="sponsorblock_intro">Introduzione</string>
     <string name="select_sponsorblock_filtering">Seleziona filtraggio SponsorBlock</string>
@@ -705,4 +704,15 @@
     <string name="update_not_checked_yet">Non ancora controllato</string>
     <string name="welcome_permissions_summary">YTDLnis funziona meglio con queste autorizzazioni. Puoi modificarli successivamente nelle impostazioni.</string>
     <string name="welcome_perm_folders_header">Cartelle ripristinate</string>
+    <string name="optional">Facoltativo</string>
+    <string name="welcome_perm_folders_summary">I tuoi backup utilizzano queste cartelle, ma l\'app non ne ha più accesso. Consenti nuovamente l\'accesso, o scegli una cartella diversa da utilizzare.</string>
+    <string name="welcome_updates_summary">Scegli come aggiornare YTDLnis.</string>
+    <string name="lyrics_offset">Offset</string>
+    <string name="save_lrc_file_summary">Salva i testi sincronizzati come file .lrc nella stessa cartella dei brani scaricati</string>
+    <string name="crop_unsupported">Il ritaglio non è disponibile per questo elemento</string>
+    <string name="no_cookies_found">Nessun cookie individuato per questo sito. Completa l\'accesso, poi riprova</string>
+    <string name="all_artists_in_album_artist">Salva tutti gli artisti in Artisti dell\'album</string>
+    <string name="all_artists_in_album_artist_summary">Usa tutti gli artisti per il tag Artisti dell\'album, non solo il primo</string>
+    <string name="press_cancel">Premi qui per annullare</string>
+    <string name="fetching_data">Recupero dati…</string>
 </resources>

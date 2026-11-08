@@ -48,7 +48,7 @@
     <string name="configure_download">ปรับเปลี่ยนการดาวน์โหลด</string>
     <string name="download">ดาวน์โหลด</string>
     <string name="video_quality">คุณภาพของวิดีโอ</string>
-    <string name="Open_File">เปิดไฟล์</string>
+    <string name="open_file">เปิดไฟล์</string>
     <string name="delete_file_too">ลบไฟล์ออกจากอุปกรณ์</string>
     <string name="delete_files_too">ลบไฟล์ออกจากอุปกรณ์</string>
     <string name="exit_app">ออกจากแอป</string>
@@ -594,4 +594,5 @@
     <string name="bgutils_pot_generation_server">เซิร์ฟเวอร์ HTTP</string>
     <string name="search_results">ผลการค้นหา</string>
     <string name="clear_info_json">ล้างข้อมูลไฟล์ info.json</string>
+    <string name="reorder_queue">https://hosted.weblate.org/translate/ytdlnis/strings/th/?checksum=7be331a1c11d7e67</string>
 </resources>

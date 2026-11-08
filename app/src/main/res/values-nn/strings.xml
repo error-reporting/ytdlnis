@@ -66,7 +66,7 @@
     <string name="embed_subtitles">Bygg inn undertekster</string>
     <string name="add_chapter">Bygg inn kapittel</string>
     <string name="show_download_card">Vis henteval</string>
-    <string name="Open_File">Opn fila</string>
+    <string name="open_file">Opn fila</string>
     <string name="request_permission_desc">Denne appen tarv filtilgjenge for å gøyma henta filer på eininga</string>
     <string name="sponsorblock_nonmusic">Ikkje-musikkar og ugjeldande delar</string>
     <string name="sponsorblock_intro">Innleiing</string>
@@ -160,7 +160,7 @@
     <string name="audio">Lyd</string>
     <string name="video">Video</string>
     <string name="couldnt_find_apk">Fann ingen høvande APK</string>
-    <string name="concurrent_fragments_summary">Mengd bitar av DASH/HLS-videoar å hente samstundes</string>
+    <string name="concurrent_fragments_summary">Mengd bitar av ein DASH/HLS-video å hente samstundes</string>
     <string name="downloading">Hentar</string>
     <string name="limit_rate_summary">Toppsnøggleiken til hentingar (i bytar i sekundet), t.d. 50K, eller 4.2M</string>
     <string name="embed_thumb">Småbiletomslag</string>
@@ -267,4 +267,5 @@
     <string name="updating_download_data">Oppdaterer nedlastningselementdata</string>
     <string name="retries">Gjentakingar</string>
     <string name="orange">Oransje</string>
+    <string name="optional">Valfri</string>
 </resources>

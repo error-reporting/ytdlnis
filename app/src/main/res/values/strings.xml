@@ -156,6 +156,7 @@
     <string name="confirm_delete_logs_desc">Delete the entire log list, permanently.</string>
     <string name="select">Select</string>
     <string name="selected">Selected</string>
+    <string name="selected_cuts">Selected cuts</string>
     <string name="all_items_selected">All items selected</string>
     <string name="access_all_directories">Allow access to all directories</string>
     <string name="access_all_directories_summary">Let the app download on directories that are restricted by default</string>
@@ -600,6 +601,18 @@
     <string name="installation_method">APK Installation method</string>
     <string name="system_install_failed">System install failed. Please choose another installation method in the settings!</string>
     <string name="choose_installer_app">Choose an installer app</string>
+    <string name="installer_system_description">Android\'s built-in package installer</string>
+    <string name="installer_system_unavailable">Not available in this build. Pick Shizuku or an installer app below</string>
+    <string name="installer_shizuku_description">Installs in the background through Shizuku</string>
+    <string name="installer_shizuku_not_running">Shizuku is not running. Start it first</string>
+    <string name="allow_install_unknown_apps">Allow YTDLnis to install apps, then try again</string>
+    <string name="install_cancelled">Installation cancelled</string>
+    <string name="install_failed_code">Install failed (code %1$s)</string>
+    <string name="install_failed_incompatible">Install failed: the installed version is signed with a different key. Uninstall it first</string>
+    <string name="install_failed_downgrade">Install failed: a newer version is already installed</string>
+    <string name="install_failed_abi">Install failed: this APK doesn\'t support your device\'s CPU</string>
+    <string name="install_failed_storage">Install failed: not enough storage</string>
+    <string name="installer_no_confirmation">The installer app didn\'t confirm the installation</string>
     <string name="notset">Not set</string>
     <string name="external">External</string>
     <string name="exit">Exit</string>
@@ -706,7 +719,6 @@
     <string name="background_update_check_types">Adjust background check types</string>
     <string name="background_update_app">App update notification</string>
     <string name="background_update_packages">Package update notifications</string>
-    <string name="background_update_ytdlp">Auto-update yt-dlp</string>
     <string name="lyrics">Lyrics</string>
     <string name="embed_lyrics">Embed lyrics</string>
     <string name="save_lrc_file">Save .lrc file</string>

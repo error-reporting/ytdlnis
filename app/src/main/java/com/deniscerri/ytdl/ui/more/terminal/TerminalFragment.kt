@@ -42,6 +42,7 @@ import com.deniscerri.ytdl.util.NotificationUtil
 import com.deniscerri.ytdl.util.UiUtil
 import com.google.android.material.appbar.MaterialToolbar
 import com.google.android.material.bottomappbar.BottomAppBar
+import com.google.android.material.slider.LabelFormatter
 import com.google.android.material.slider.Slider
 import com.termux.terminal.TerminalSession
 import com.termux.view.TerminalView
@@ -69,10 +70,12 @@ class TerminalFragment : Fragment() {
     private lateinit var session : TerminalSession
     private var sessionId: String? = null
     private var sessionInitJob: Job? = null
+    private var newSession = false
+    private var sessionShareURL: String? = null
 
     private fun terminalZoom(): Int {
         val zoom = sharedPreferences.getFloat("terminal_text_zoom", 35f)
-        return if (zoom.isFinite()) zoom.coerceIn(10f, 37f).toInt() else 35
+        return if (zoom.isFinite()) zoom.coerceIn(10f, 50f).toInt() else 35
     }
 
     override fun onCreateView(
@@ -103,6 +106,8 @@ class TerminalFragment : Fragment() {
         if (arguments?.containsKey("id") == true) {
             sessionId = arguments?.getString("id")
         }
+        newSession = arguments?.getBoolean("new") ?: false
+        sessionShareURL = arguments?.getString("share")?.ifEmpty { null }
 
         terminalViewModel.setTerminalView(terminalView)
         terminalViewModel.setVirtualKeysView(virtualKeysView)
@@ -135,8 +140,11 @@ class TerminalFragment : Fragment() {
         val slider = requireActivity().findViewById<Slider>(R.id.textsize_seekbar)
         slider?.apply {
             valueFrom = 10f
-            valueTo = 37f
+            valueTo = 50f
+            stepSize = 1f
             value = terminalZoom().toFloat()
+            labelBehavior = LabelFormatter.LABEL_VISIBLE
+            setLabelFormatter { it.toInt().toString() }
 
             addOnChangeListener { _, value, _ ->
                 terminalView.setTextSize(value.toInt())
@@ -313,16 +321,13 @@ class TerminalFragment : Fragment() {
             terminalViewModel.changeSession(requireContext(), sessionBinder, sessionId!!)
         }
 
-        val newSession = arguments?.getBoolean("new") ?: false
-        val sessionShareURL = arguments?.getString("share")?.ifEmpty { null }
-
         val currentSession = sessionBinder.getSession(service.currentSession.value)
         session = if (newSession || currentSession == null) {
             sessionId = KeyShortcutHandler.generateUniqueSessionId(activity)
             sessionBinder.createSession(
                 sessionId!!,
                 client
-            )
+            ).also { service.currentSession.value = sessionId!! }
         } else {
             if (sessionId.isNullOrBlank()) sessionId = service.currentSession.value
             currentSession
